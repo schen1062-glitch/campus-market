@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#07c160">
+    <title>校园闲置流转助手</title>
+    <style>
+        :root {
+            --primary: #07c160;
+            --primary-light: #e8f8ef;
+            --primary-dark: #06ad56;
+            --bg: #ededed;
+            --card-bg: #ffffff;
+            --text: #191919;
+            --text-secondary: #888888;
+            --border: #e5e5e5;
+            --shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --tab-height: 56px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        html { font-size: 16px; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100dvh;
+            padding-bottom: calc(var(--tab-height) + var(--safe-bottom) + 8px);
+            max-width: 430px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .page {
+            display: none;
+            padding: clamp(12px, 3.2vw, 16px);
+            padding-top: clamp(14px, 3.5vw, 20px);
+            animation: fadeIn 0.2s ease;
+        }
+        .page.active { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-title {
+            font-size: clamp(17px, 4.5vw, 20px);
+            font-weight: 600;
+            margin-bottom: 14px;
+            color: var(--text);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: clamp(12px, 3.2vw, 16px);
+            box-shadow: var(--shadow);
+            margin-bottom: 12px;
+        }
+
+        /* 搜索栏 */
+        .search-bar {
+            display: flex;
+            gap: 8px;
+            align-items: stretch;
+        }
+        .search-bar input { flex: 1; margin: 0; }
+
+        /* 物品卡片 */
+        .item-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: clamp(12px, 3.2vw, 14px);
+            margin-bottom: 12px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+        .item-card img {
+            width: 100%;
+            height: clamp(130px, 38vw, 180px);
+            object-fit: cover;
+            border-radius: var(--radius-sm);
+            background: #f0f0f0;
+        }
+        .item-title {
+            font-size: clamp(15px, 4vw, 17px);
+            font-weight: 600;
+            margin: 10px 0 6px;
+            line-height: 1.4;
+        }
+        .item-info {
+            font-size: clamp(12px, 3.2vw, 14px);
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .item-price { color: #fa5151; font-weight: 600; }
+        .item-meta {
+            margin-top: 10px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .item-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* 按钮 */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 10px 18px;
+            border-radius: var(--radius-sm);
+            font-size: clamp(14px, 3.7vw, 15px);
+            cursor: pointer;
+            font-weight: 500;
+            transition: opacity 0.15s, transform 0.1s;
+            white-space: nowrap;
+        }
+        .btn:active { opacity: 0.85; transform: scale(0.98); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-block { width: 100%; margin-top: 10px; }
+        .btn-outline {
+            background: #fff;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+        .btn-ghost {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 13px;
+            flex: 1;
+            min-width: 0;
+        }
+        .btn-fav.favorited { background: #fff0f0; color: #fa5151; border: 1px solid #fa5151; }
+
+        /* 表单 */
+        input, textarea, select {
+            width: 100%;
+            padding: 11px 12px;
+            margin: 8px 0;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: clamp(14px, 3.7vw, 16px);
+            background: #fff;
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input:focus, textarea:focus { border-color: var(--primary); }
+        textarea { height: 88px; resize: vertical; line-height: 1.5; }
+
+        .file-input-wrap {
+            background: var(--primary-light);
+            border: 1px dashed var(--primary);
+            border-radius: var(--radius-sm);
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 10px;
+            color: var(--primary);
+            font-size: 14px;
+        }
+        .file-input-wrap input[type="file"] { margin: 0; border: none; background: transparent; }
+
+        /* Tab 按钮 */
+        .tab-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        .tab-buttons button {
+            flex: 1;
+            padding: 9px 6px;
+            background: #f5f5f5;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: clamp(12px, 3.2vw, 14px);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab-buttons button.active {
+            background: var(--primary);
+            color: #fff;
+            font-weight: 500;
+        }
+
+        /* 消息 */
+        .message-item {
+            background: var(--card-bg);
+            padding: 12px 14px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 10px;
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            transition: box-shadow 0.2s;
+            border: 2px solid transparent;
+        }
+        .message-item:active { opacity: 0.95; }
+        .message-item.expanded {
+            border-color: var(--primary-light);
+            box-shadow: 0 2px 16px rgba(7, 193, 96, 0.12);
+        }
+        .message-preview {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+        .message-preview strong { font-size: 14px; color: var(--text); }
+        .message-preview .preview-text {
+            flex: 1;
+            font-size: 13px;
+            color: var(--text-secondary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin: 0 8px;
+        }
+        .message-badge {
+            background: #fa5151;
+            color: #fff;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            flex-shrink: 0;
+        }
+        .message-detail {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+        .message-detail p {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text);
+            margin-bottom: 8px;
+            word-break: break-word;
+        }
+        .message-detail small { color: var(--text-secondary); font-size: 12px; }
+        .message-detail .detail-row {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            word-break: break-all;
+        }
+
+        .divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 20px 0;
+        }
+
+        /* 用户信息 */
+        .user-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #fff;
+            border-radius: var(--radius);
+            padding: clamp(16px, 4vw, 20px);
+            margin-bottom: 14px;
+            box-shadow: 0 4px 16px rgba(7, 193, 96, 0.25);
+        }
+        .user-header .nickname { font-size: clamp(18px, 4.8vw, 22px); font-weight: 600; }
+        .building-row {
+            margin-top: 10px;
+            font-size: 14px;
+            opacity: 0.95;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .building-row.clickable {
+            cursor: pointer;
+            padding: 6px 10px;
+            margin: 6px -10px 0;
+            border-radius: var(--radius-sm);
+            transition: background 0.2s;
+        }
+        .building-row.clickable:active { background: rgba(255,255,255,0.15); }
+        .edit-hint { font-size: 12px; opacity: 0.8; margin-left: auto; }
+
+        /* 底部导航 */
+        .tab-bar {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 430px;
+            background: #fff;
+            border-top: 1px solid var(--border);
+            display: flex;
+            z-index: 100;
+            padding-bottom: var(--safe-bottom);
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.04);
+        }
+        .tab-item {
+            flex: 1;
+            text-align: center;
+            padding: 8px 0 6px;
+            color: var(--text-secondary);
+            font-size: clamp(11px, 2.9vw, 12px);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .tab-item .tab-icon { font-size: 20px; display: block; margin-bottom: 2px; }
+        .tab-item.active { color: var(--primary); font-weight: 600; }
+
+        /* 空状态 / 加载 */
+        .empty-state {
+            text-align: center;
+            padding: 32px 20px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        .empty-state .empty-icon { font-size: 40px; margin-bottom: 10px; opacity: 0.5; }
+
+        /* 全局 Loading */
+        .global-loading {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s, visibility 0.2s;
+        }
+        .global-loading.show { opacity: 1; visibility: visible; }
+        .loading-box {
+            background: #fff;
+            border-radius: var(--radius);
+            padding: 24px 32px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            min-width: 140px;
+        }
+        .loading-spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid var(--primary-light);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 12px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { font-size: 14px; color: var(--text-secondary); }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: calc(16px + env(safe-area-inset-top, 0px));
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: rgba(0,0,0,0.78);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+            max-width: calc(100% - 40px);
+            text-align: center;
+        }
+        .toast.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* 模态框 */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 200;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.25s;
+        }
+        .modal-overlay.show { opacity: 1; visibility: visible; }
+        .modal-sheet {
+            background: #fff;
+            width: 100%;
+            max-width: 430px;
+            border-radius: var(--radius) var(--radius) 0 0;
+            padding: 20px clamp(16px, 4vw, 20px) calc(20px + var(--safe-bottom));
+            transform: translateY(100%);
+            transition: transform 0.25s ease;
+        }
+        .modal-overlay.show .modal-sheet { transform: translateY(0); }
+        .modal-title { font-size: 17px; font-weight: 600; margin-bottom: 16px; text-align: center; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 12px; }
+        .modal-actions .btn { flex: 1; }
+
+        .status-text { margin-top: 10px; color: var(--primary); font-size: 14px; text-align: center; }
+
+        /* iPhone SE 小屏优化 */
+        @media (max-width: 375px) {
+            .item-actions { flex-direction: column; }
+            .btn-sm { width: 100%; }
+            .tab-buttons button { font-size: 12px; padding: 8px 4px; }
+        }
+
+        /* 大屏 iPhone 内容区留白 */
+        @media (min-width: 390px) {
+            .page { padding-left: 18px; padding-right: 18px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 全局 Loading -->
+    <div id="globalLoading" class="global-loading">
+        <div class="loading-box">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loadingText">加载中...</div>
+        </div>
+    </div>
+
+    <!-- Toast 提示 -->
+    <div id="toast" class="toast"></div>
+
+    <!-- 楼栋编辑弹窗 -->
+    <div id="buildingModal" class="modal-overlay" onclick="closeBuildingModal(event)">
+        <div class="modal-sheet" onclick="event.stopPropagation()">
+            <div class="modal-title">编辑楼栋</div>
+            <input type="text" id="buildingEditInput" placeholder="如：3号楼、A栋">
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="closeBuildingModal()">取消</button>
+                <button class="btn" onclick="saveBuilding()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 首页 -->
+    <div id="homePage" class="page active">
+        <div class="section-title">🔍 搜索闲置</div>
+        <div class="card">
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="输入关键词（教材、台灯...）">
+                <button class="btn" onclick="searchItems()">搜索</button>
+            </div>
+            <button class="btn btn-block btn-outline" style="margin-top:10px;" onclick="freeMatch()">🎁 免费领：告诉我想要什么</button>
+        </div>
+        <div id="itemList"></div>
+    </div>
+
+    <!-- 发布页 -->
+    <div id="publishPage" class="page">
+        <div class="section-title">📷 发布闲置</div>
+        <div class="card">
+            <div class="file-input-wrap">
+                <div>📸 点击选择物品图片</div>
+                <input type="file" accept="image/*" id="imageInput">
+            </div>
+            <textarea id="descInput" placeholder="物品描述（如：苹果14手机，九成新）"></textarea>
+            <button class="btn btn-block" id="publishBtn" onclick="publishItem()">发布</button>
+            <div id="publishStatus" class="status-text"></div>
+        </div>
+    </div>
+
+    <!-- 消息页 -->
+    <div id="messagePage" class="page">
+        <div class="section-title">💬 私信</div>
+        <div class="card">
+            <button class="btn btn-block btn-ghost" onclick="loadUnreadMessages()">刷新未读消息</button>
+        </div>
+        <div id="unreadList"></div>
+        <hr class="divider">
+        <div class="section-title">发送私信</div>
+        <div class="card">
+            <input type="text" id="receiverIdInput" placeholder="接收者 UUID（可从物品详情获取）">
+            <textarea id="messageContent" placeholder="消息内容"></textarea>
+            <button class="btn btn-block" onclick="sendMessage()">发送</button>
+        </div>
+    </div>
+
+    <!-- 我的 -->
+    <div id="myPage" class="page">
+        <div id="loginArea" class="card">
+            <div class="section-title">👤 登录 / 注册</div>
+            <input type="text" id="nicknameInput" placeholder="输入你的昵称">
+            <button class="btn btn-block" onclick="handleLogin()">进入</button>
+            <div id="loginMsg" style="margin-top:8px; color:#666; font-size:14px; text-align:center;"></div>
+        </div>
+        <div id="userInfoArea" style="display:none;">
+            <div class="user-header">
+                <div class="nickname">你好，<span id="displayNickname"></span></div>
+                <div class="building-row clickable" onclick="openBuildingModal()" id="buildingRow">
+                    <span>📍 楼栋：<span id="displayBuilding"></span></span>
+                    <span class="edit-hint">点击编辑 ›</span>
+                </div>
+            </div>
+            <div class="tab-buttons">
+                <button id="tabMyItems" class="active" onclick="switchMyTab('items')">我的发布</button>
+                <button id="tabMyFavorites" onclick="switchMyTab('favorites')">我的收藏</button>
+                <button id="tabMyTransactions" onclick="switchMyTab('transactions')">交易记录</button>
+            </div>
+            <div id="myList"></div>
+        </div>
+    </div>
+
+    <!-- 底部导航 -->
+    <div class="tab-bar">
+        <div class="tab-item active" data-tab="home" onclick="switchMainTab('home')">
+            <span class="tab-icon">🏠</span>首页
+        </div>
+        <div class="tab-item" data-tab="publish" onclick="switchMainTab('publish')">
+            <span class="tab-icon">➕</span>发布
+        </div>
+        <div class="tab-item" data-tab="message" onclick="switchMainTab('message')">
+            <span class="tab-icon">💬</span>消息
+        </div>
+        <div class="tab-item" data-tab="my" onclick="switchMainTab('my')">
+            <span class="tab-icon">👤</span>我的
+        </div>
+    </div>
+
+    <script>
+        // ==================== 配置区 ====================
+        const API_TOKEN = 'pat_fZhWsxou0FapswdL4TrJhbz5oXCqAE6kAweDveJFS1869IB3Zwv45lJJ8hNmfhy1';
+        const API_BASE = 'https://api.coze.cn/v1';
+        const WORKFLOW_IDS = {
+            search: '7649701837079347209',          // WUJSSS
+            publish: '7649696288146407487',         // WPFBSS
+            login: '7649804734613766207',           // UserLogin
+            register: '7649802286663221248',        // UserRegister
+            myItems: '7649769115390214144',         // GetMyItems
+            myFavorites: '7649787431143227427',     // GetMyFavorites
+            myTransactions: '7649790205725229056',  // GetMyTransactions
+            sendMsg: '7649706429264740392',         // FSSX
+            unreadMsg: '7649712348181823524',       // CXWDXX
+            freeMatch: '7649715462066356250'        // MFZSPP
+        };
+
+        // 全局状态
+        let currentUser = null;
+        let unreadMessages = [];
+        let expandedMsgIndex = -1;
+        let loadingCount = 0;
+        let favoritedIds = new Set(JSON.parse(localStorage.getItem('favoritedIds') || '[]'));
+
+        // ==================== UI 工具 ====================
+        function showLoading(text = '加载中...') {
+            loadingCount++;
+            document.getElementById('loadingText').innerText = text;
+            document.getElementById('globalLoading').classList.add('show');
+        }
+
+        function hideLoading() {
+            loadingCount = Math.max(0, loadingCount - 1);
+            if (loadingCount === 0) {
+                document.getElementById('globalLoading').classList.remove('show');
+            }
+        }
+
+        let toastTimer = null;
+        function showToast(msg, duration = 2200) {
+            const el = document.getElementById('toast');
+            el.innerText = msg;
+            el.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+        }
+
+        function escapeHtml(str) {
+            if (str == null) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function getItemId(item) {
+            return item.item_id || item.id || '';
+        }
+
+        // ==================== API 工具 ====================
+        async function callWorkflow(workflowId, parameters = {}, loadingText = '加载中...') {
+            if (!workflowId) return null;
+            showLoading(loadingText);
+            try {
+                const res = await fetch(`${API_BASE}/workflow/run`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${API_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        workflow_id: workflowId,
+                        parameters: parameters
+                    })
+                });
+                const json = await res.json();
+                if (json.code === 0 && json.data) {
+                    const result = typeof json.data === 'string' ? JSON.parse(json.data) : json.data;
+                    return result;
+                } else {
+                    console.error('工作流调用失败:', json);
+                    return null;
+                }
+            } catch (err) {
+                console.error('网络错误:', err);
+                return null;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function uploadFile(file) {
+            showLoading('上传图片中...');
+            const formData = new FormData();
+            formData.append('file', file);
+            try {
+                const res = await fetch(`${API_BASE}/files/upload`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${API_TOKEN}` },
+                    body: formData
+                });
+                const json = await res.json();
+                if (json.code === 0 && json.data) {
+                    return json.data.id;
+                }
+                console.error('文件上传失败:', json);
+                return null;
+            } catch (err) {
+                console.error('上传错误:', err);
+                return null;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId + 'Page').classList.add('active');
+        }
+
+        // ==================== 首页功能 ====================
+        async function searchItems() {
+            const keyword = document.getElementById('searchInput').value.trim();
+            if (!keyword) return showToast('请输入搜索关键词');
+            const data = await callWorkflow(WORKFLOW_IDS.search, { search_keyword: keyword }, '搜索中...');
+            const items = data?.result || [];
+            renderItems(items, 'itemList');
+        }
+
+        async function freeMatch() {
+            const request = prompt('你想免费领取什么类型的物品？（如：教材、台灯）');
+            if (!request) return;
+            const data = await callWorkflow(WORKFLOW_IDS.freeMatch, { user_request: request }, '匹配中...');
+            const items = data?.result || [];
+            renderItems(items, 'itemList');
+        }
+
+        function renderItems(items, containerId) {
+            const container = document.getElementById(containerId);
+            if (!items || items.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">📦</div>暂无物品</div>';
+                return;
+            }
+            container.innerHTML = items.map(item => {
+                const itemId = getItemId(item);
+                const userUuid = item.user_uuid || '';
+                const isFav = favoritedIds.has(String(itemId));
+                return `
+                <div class="item-card">
+                    <img src="${escapeHtml(item.image_url) || 'https://via.placeholder.com/300'}" alt="物品图" onerror="this.src='https://via.placeholder.com/300'">
+                    <div class="item-title">${escapeHtml(item.description || '无描述')}</div>
+                    <div class="item-info">
+                        <span class="item-price">¥${escapeHtml(item.price ?? 0)}</span>
+                        <span>${escapeHtml(item.category || '其他')}</span>
+                        <span>${escapeHtml(item.building || '')}</span>
+                    </div>
+                    <div class="item-meta">发布者：${escapeHtml(userUuid.slice(0, 8) || '未知')}</div>
+                    <div class="item-actions">
+                        <button class="btn btn-sm btn-outline" onclick="contactSeller('${escapeHtml(userUuid)}')">联系 TA</button>
+                        <button class="btn btn-sm btn-fav${isFav ? ' favorited' : ''}" onclick="addFavorite('${escapeHtml(itemId)}', this)">${isFav ? '♥ 已收藏' : '♡ 收藏'}</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function addFavorite(itemId, btnEl) {
+            if (!currentUser) return showToast('请先在「我的」页面登录');
+            if (!itemId) return showToast('物品 ID 无效');
+            favoritedIds.add(String(itemId));
+            localStorage.setItem('favoritedIds', JSON.stringify([...favoritedIds]));
+            if (btnEl) { btnEl.classList.add('favorited'); btnEl.innerHTML = '♥ 已收藏'; }
+            showToast('收藏成功');
+        }
+
+        // ==================== 发布功能 ====================
+        async function publishItem() {
+            const fileInput = document.getElementById('imageInput');
+            const file = fileInput.files[0];
+            if (!file) return showToast('请选择一张图片');
+            const description = document.getElementById('descInput').value.trim();
+            if (!description) return showToast('请填写物品描述');
+
+            const publishBtn = document.getElementById('publishBtn');
+            publishBtn.disabled = true;
+            document.getElementById('publishStatus').innerText = '上传图片中...';
+
+            const fileId = await uploadFile(file);
+            if (!fileId) {
+                document.getElementById('publishStatus').innerText = '图片上传失败';
+                publishBtn.disabled = false;
+                return;
+            }
+
+            document.getElementById('publishStatus').innerText = '发布中，AI 审核中...';
+            const data = await callWorkflow(WORKFLOW_IDS.publish, {
+                item_image: JSON.stringify({ file_id: fileId }),
+                item_description: description
+            }, '发布中，AI 审核中...');
+
+            publishBtn.disabled = false;
+
+            if (data) {
+                document.getElementById('publishStatus').innerText = '✅ 发布成功！';
+                fileInput.value = '';
+                document.getElementById('descInput').value = '';
+                showToast('发布成功，正在跳转...');
+                setTimeout(() => {
+                    switchMainTab('my');
+                    if (currentUser) {
+                        switchMyTab('items');
+                    } else {
+                        showToast('登录后可查看「我的发布」');
+                    }
+                }, 600);
+            } else {
+                document.getElementById('publishStatus').innerText = '发布失败，请重试';
+                showToast('发布失败，请重试');
+            }
+        }
+
+        // ==================== 消息功能 ====================
+        async function loadUnreadMessages() {
+            if (!currentUser) return showToast('请先在「我的」页面登录');
+            const data = await callWorkflow(WORKFLOW_IDS.unreadMsg, { user_uuid: currentUser.uuid }, '加载消息中...');
+            unreadMessages = data?.result || [];
+            expandedMsgIndex = -1;
+            renderUnreadMessages();
+        }
+
+        function renderUnreadMessages() {
+            const container = document.getElementById('unreadList');
+            if (unreadMessages.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">💬</div>没有未读消息</div>';
+                return;
+            }
+            container.innerHTML = unreadMessages.map((msg, i) => {
+                const fromUuid = msg.from_user_uuid || '';
+                const content = msg.content || '';
+                const time = msg.bstudio_create_time || '';
+                const isExpanded = expandedMsgIndex === i;
+                return `
+                <div class="message-item${isExpanded ? ' expanded' : ''}" onclick="toggleMessageDetail(${i})">
+                    <div class="message-preview">
+                        <strong>${escapeHtml(fromUuid.slice(0, 8) || '未知')}</strong>
+                        <span class="preview-text">${escapeHtml(content)}</span>
+                        ${!isExpanded ? '<span class="message-badge">未读</span>' : ''}
+                    </div>
+                    ${isExpanded ? `
+                    <div class="message-detail">
+                        <div class="detail-row">发送者 UUID：${escapeHtml(fromUuid)}</div>
+                        <div class="detail-row">时间：${escapeHtml(time)}</div>
+                        <p>${escapeHtml(content)}</p>
+                        <button class="btn btn-sm btn-block" onclick="event.stopPropagation(); replyToMessage(${i})">回复 TA</button>
+                    </div>` : ''}
+                </div>`;
+            }).join('');
+        }
+
+        function toggleMessageDetail(index) {
+            expandedMsgIndex = expandedMsgIndex === index ? -1 : index;
+            renderUnreadMessages();
+        }
+
+        function replyToMessage(index) {
+            const msg = unreadMessages[index];
+            if (!msg) return;
+            document.getElementById('receiverIdInput').value = msg.from_user_uuid || '';
+            document.getElementById('messageContent').value = '';
+            document.getElementById('messageContent').focus();
+            document.getElementById('messageContent').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            showToast('已填入发送者，请编辑回复内容');
+        }
+
+        async function sendMessage() {
+            if (!currentUser) return showToast('请先登录');
+            const receiver = document.getElementById('receiverIdInput').value.trim();
+            const content = document.getElementById('messageContent').value.trim();
+            if (!receiver || !content) return showToast('请填写接收者 ID 和消息内容');
+            const data = await callWorkflow(WORKFLOW_IDS.sendMsg, {
+                receiver_id: receiver,
+                content: content
+            }, '发送中...');
+            if (data) {
+                showToast('发送成功');
+                document.getElementById('messageContent').value = '';
+            } else {
+                showToast('发送失败');
+            }
+        }
+
+        function contactSeller(sellerUuid) {
+            document.getElementById('receiverIdInput').value = sellerUuid;
+            switchMainTab('message');
+            showToast('已填入卖家 ID，可直接发私信');
+        }
+
+        // ==================== 我的（登录/注册 + 个人中心） ====================
+        async function handleLogin() {
+            const nickname = document.getElementById('nicknameInput').value.trim();
+            if (!nickname) return showToast('请输入昵称');
+
+            const loginResult = await callWorkflow(WORKFLOW_IDS.login, { nickname: nickname }, '登录中...');
+            let userList = loginResult?.result || [];
+            let userObj = null;
+
+            if (userList.length > 0) {
+                userObj = userList[0];
+            } else {
+                const registerResult = await callWorkflow(WORKFLOW_IDS.register, { nickname: nickname }, '注册中...');
+                userList = registerResult?.result || [];
+                if (userList.length > 0) userObj = userList[0];
+            }
+
+            if (userObj) {
+                currentUser = userObj;
+                // 恢复本地缓存的楼栋
+                const cachedBuilding = localStorage.getItem('building_' + userObj.uuid);
+                if (cachedBuilding) currentUser.building = cachedBuilding;
+
+                document.getElementById('loginArea').style.display = 'none';
+                document.getElementById('userInfoArea').style.display = 'block';
+                document.getElementById('displayNickname').innerText = userObj.nickname || nickname;
+                document.getElementById('displayBuilding').innerText = currentUser.building || '未知';
+                document.getElementById('loginMsg').innerText = '';
+                showToast('欢迎回来！');
+                loadMyItems();
+            } else {
+                document.getElementById('loginMsg').innerText = '登录/注册失败，请稍后再试';
+                showToast('登录/注册失败');
+            }
+        }
+
+        function openBuildingModal() {
+            if (!currentUser) return;
+            document.getElementById('buildingEditInput').value = currentUser.building === '未知' ? '' : (currentUser.building || '');
+            document.getElementById('buildingModal').classList.add('show');
+            setTimeout(() => document.getElementById('buildingEditInput').focus(), 300);
+        }
+
+        function closeBuildingModal(e) {
+            if (e && e.target !== document.getElementById('buildingModal')) return;
+            document.getElementById('buildingModal').classList.remove('show');
+        }
+
+        function saveBuilding() {
+            if (!currentUser) return;
+            const building = document.getElementById('buildingEditInput').value.trim();
+            if (!building) return showToast('请输入楼栋名称');
+            currentUser.building = building;
+            localStorage.setItem('building_' + currentUser.uuid, building);
+            document.getElementById('displayBuilding').innerText = building;
+            closeBuildingModal();
+            showToast('保存成功');
+        }
+
+        function switchMyTab(tab) {
+            document.querySelectorAll('#myPage .tab-buttons button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('tabMy' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+            if (tab === 'items') loadMyItems();
+            else if (tab === 'favorites') loadMyFavorites();
+            else if (tab === 'transactions') loadMyTransactions();
+        }
+
+        async function loadMyItems() {
+            if (!currentUser) return;
+            document.getElementById('myList').innerHTML = '<div class="empty-state">加载中...</div>';
+            const data = await callWorkflow(WORKFLOW_IDS.myItems, { user_uuid: currentUser.uuid }, '加载发布中...');
+            renderMyList(data?.result || []);
+        }
+
+        async function loadMyFavorites() {
+            if (!currentUser) return;
+            document.getElementById('myList').innerHTML = '<div class="empty-state">加载中...</div>';
+            const data = await callWorkflow(WORKFLOW_IDS.myFavorites, { user_uuid: currentUser.uuid }, '加载收藏中...');
+            renderMyList(data?.result || []);
+        }
+
+        async function loadMyTransactions() {
+            if (!currentUser) return;
+            document.getElementById('myList').innerHTML = '<div class="empty-state">加载中...</div>';
+            const data = await callWorkflow(WORKFLOW_IDS.myTransactions, { user_uuid: currentUser.uuid }, '加载记录中...');
+            const list = data?.result || [];
+            const container = document.getElementById('myList');
+            if (list.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>无交易记录</div>';
+                return;
+            }
+            container.innerHTML = list.map(t => `
+                <div class="item-card">
+                    <div style="font-size:14px; line-height:1.8;">
+                        <div><strong>物品 ID：</strong>${escapeHtml(t.item_id || '')}</div>
+                        <div><strong>买家：</strong>${escapeHtml(t.buyer_uuid?.slice(0, 8) || '')}</div>
+                        <div><strong>卖家：</strong>${escapeHtml(t.seller_uuid?.slice(0, 8) || '')}</div>
+                        <div><strong>状态：</strong><span style="color:var(--primary);">${escapeHtml(t.status || '')}</span></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderMyList(items) {
+            const container = document.getElementById('myList');
+            if (!items || items.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div>暂无数据</div>';
+                return;
+            }
+            container.innerHTML = items.map(item => `
+                <div class="item-card">
+                    <img src="${escapeHtml(item.image_url) || 'https://via.placeholder.com/300'}" alt="物品图" onerror="this.src='https://via.placeholder.com/300'">
+                    <div class="item-title">${escapeHtml(item.description || '无描述')}</div>
+                    <div class="item-info">
+                        <span class="item-price">¥${escapeHtml(item.price ?? 0)}</span>
+                        <span>${escapeHtml(item.category || '其他')}</span>
+                        <span>${escapeHtml(item.status || '')}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ==================== Tab 切换 ====================
+        function switchMainTab(tab) {
+            if (tab === 'home') showPage('home');
+            else if (tab === 'publish') showPage('publish');
+            else if (tab === 'message') showPage('message');
+            else if (tab === 'my') showPage('my');
+
+            document.querySelectorAll('.tab-item').forEach(el => {
+                el.classList.remove('active');
+                if (el.dataset.tab === tab) el.classList.add('active');
+            });
+
+            if (tab === 'message' && currentUser && unreadMessages.length === 0) {
+                loadUnreadMessages();
+            }
+        }
+
+        // ==================== 初始化 ====================
+        // WUJSSS 需要关键字，首页不自动加载，由用户主动搜索
+    </script>
+</body>
+</html>
