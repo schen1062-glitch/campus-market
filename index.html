@@ -637,6 +637,7 @@
             }
         }
 
+        // （保留文件上传函数，但发布功能不再使用）
         async function uploadFile(file) {
             showLoading('上传图片中...');
             const formData = new FormData();
@@ -722,35 +723,27 @@
 
         // ==================== 发布功能 ====================
         async function publishItem() {
-            const fileInput = document.getElementById('imageInput');
-            const file = fileInput.files[0];
-            if (!file) return showToast('请选择一张图片');
+            if (!currentUser) return showToast('请先在「我的」页面登录');
+
             const description = document.getElementById('descInput').value.trim();
             if (!description) return showToast('请填写物品描述');
 
             const publishBtn = document.getElementById('publishBtn');
             publishBtn.disabled = true;
-            document.getElementById('publishStatus').innerText = '上传图片中...';
+            document.getElementById('publishStatus').innerText = '发布中...';
 
-            const fileId = await uploadFile(file);
-            if (!fileId) {
-                document.getElementById('publishStatus').innerText = '图片上传失败';
-                publishBtn.disabled = false;
-                return;
-            }
-
-            document.getElementById('publishStatus').innerText = '发布中，AI 审核中...';
             const data = await callWorkflow(WORKFLOW_IDS.publish, {
-                item_image: JSON.stringify({ file_id: fileId }),
-                item_description: description
+                item_desc: description,
+                user_uuid: currentUser.uuid
             }, '发布中，AI 审核中...');
 
             publishBtn.disabled = false;
 
             if (data) {
                 document.getElementById('publishStatus').innerText = '✅ 发布成功！';
-                fileInput.value = '';
                 document.getElementById('descInput').value = '';
+                const fileInput = document.getElementById('imageInput');
+                if (fileInput) fileInput.value = '';
                 showToast('发布成功，正在跳转...');
                 setTimeout(() => {
                     switchMainTab('my');
@@ -854,14 +847,25 @@
             if (userList.length > 0) {
                 userObj = userList[0];
             } else {
-                const registerResult = await callWorkflow(WORKFLOW_IDS.register, { nickname: nickname }, '注册中...');
-                userList = registerResult?.result || [];
-                if (userList.length > 0) userObj = userList[0];
+                // 注册新用户
+                const registerResult = await callWorkflow(WORKFLOW_IDS.register, {
+                    nickname: nickname,
+                    building: '未知',
+                    is_new: 1
+                }, '注册中...');
+                if (registerResult && registerResult.result) {
+                    const regResult = registerResult.result;
+                    // 兼容返回单个对象或数组
+                    if (Array.isArray(regResult)) {
+                        userObj = regResult[0];
+                    } else if (typeof regResult === 'object') {
+                        userObj = regResult;
+                    }
+                }
             }
 
             if (userObj) {
                 currentUser = userObj;
-                // 恢复本地缓存的楼栋
                 const cachedBuilding = localStorage.getItem('building_' + userObj.uuid);
                 if (cachedBuilding) currentUser.building = cachedBuilding;
 
